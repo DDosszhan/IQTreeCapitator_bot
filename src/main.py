@@ -1,9 +1,10 @@
-import logging
 import os
+import logging
 from dotenv import load_dotenv
-
+from database import Tree, session
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, ConversationHandler
+from sqlmodel import select
 
 load_dotenv()
 
@@ -15,31 +16,20 @@ logger = logging.getLogger(__name__)
 
 ASK_ID = range(1)
 
-# "Фейковая база" — только один id
-FAKE_TREE_ID = "abcd-1234-efgh-5678"
-FAKE_TREE = {
-    "id": FAKE_TREE_ID,
-    "longitude": 30.1,
-    "latitude": 59.9,
-    "height": 5.5
-}
+def get_tree_msg(tree_id: str) -> str:
+    statement = select(Tree).where(Tree.tree_id == tree_id)
+    results = session.exec(statement)
 
-def get_tree_by_id(tree_id):
-    if tree_id == FAKE_TREE_ID:
-        return FAKE_TREE
-    return None
+    for tree in results:
+        return f"Дерево найдено:\nID: {tree.tree_id}\nДолгота: {tree.lon}\nШирота: {tree.lan}\nВысота: {tree.height}"
+
+    return "ID не найдено."
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     args = context.args
     if args:
         tree_id = args[0]
-        tree = get_tree_by_id(tree_id)
-        if tree:
-            await update.message.reply_text(
-                f"Дерево найдено:\nID: {tree['id']}\nДолгота: {tree['longitude']}\nШирота: {tree['latitude']}\nВысота: {tree['height']}"
-            )
-        else:
-            await update.message.reply_text("ID не найдено.")
+        await update.message.reply_text(get_tree_msg(tree_id))
         return ConversationHandler.END
     else:
         await update.message.reply_text("Пожалуйста, введите ID дерева:")
@@ -47,13 +37,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def ask_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     tree_id = update.message.text.strip()
-    tree = get_tree_by_id(tree_id)
-    if tree:
-        await update.message.reply_text(
-            f"Дерево найдено:\nID: {tree['id']}\nДолгота: {tree['longitude']}\nШирота: {tree['latitude']}\nВысота: {tree['height']}"
-        )
-    else:
-        await update.message.reply_text("ID не найдено.")
+    await update.message.reply_text(get_tree_msg(tree_id))
     return ConversationHandler.END
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
