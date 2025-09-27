@@ -1,10 +1,11 @@
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes
+from ..utils import reply_text_if_msg
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(
-        "Отправьте /start <id> или просто /start и следуйте инструкциям."
+    await reply_text_if_msg(
+        update, "Отправьте /start <id> или просто /start и следуйте инструкциям."
     )
 
 

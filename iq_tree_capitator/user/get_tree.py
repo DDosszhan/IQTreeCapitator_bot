@@ -9,8 +9,9 @@ from telegram.ext import (
 )
 from sqlmodel import select, Session
 from ..database import engine, Tree
+from ..utils import reply_text_if_msg
 
-ASK_ID = range(1)
+ASK_ID = 1
 MESSAGE_TEMPLATE = """
 Дерево найдено:
 ID: {id}
@@ -47,16 +48,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     args = context.args
     if args:
         tree_id = args[0]
-        await update.message.reply_text(get_tree_msg(tree_id))
+        await reply_text_if_msg(update, get_tree_msg(tree_id))
         return ConversationHandler.END
     else:
-        await update.message.reply_text("Пожалуйста, введите ID дерева:")
+        await reply_text_if_msg(update, "Пожалуйста, введите ID дерева:")
         return ASK_ID
 
 
 async def ask_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    tree_id = update.message.text.strip()
-    await update.message.reply_text(get_tree_msg(tree_id))
+    if update.message and update.message.text:
+        tree_id = update.message.text.strip()
+        await reply_text_if_msg(update, get_tree_msg(tree_id))
     return ConversationHandler.END
 
 

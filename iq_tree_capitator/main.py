@@ -10,6 +10,10 @@ from .user import get_user_handlers
 def main() -> None:
     load_dotenv()
     token = os.getenv("BOT_TOKEN")
+    if not token:
+        print("BOT_TOKEN is unset! Exiting...")
+        exit(1)
+
     application = Application.builder().token(token).build()
 
     for handler in (*get_user_handlers(), *get_admin_handlers()):
