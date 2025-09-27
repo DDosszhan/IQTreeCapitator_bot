@@ -1,26 +1,15 @@
-import os
-from dotenv import load_dotenv
-from telegram import Update
-from telegram.ext import Application
-
-from .admin import get_admin_handlers
-from .user import get_user_handlers
+import asyncio
+from iq_tree_capitator.create_bot import dp, bot
+from iq_tree_capitator.user import get_tree, help
+from iq_tree_capitator.admin import add_tree
 
 
-def main() -> None:
-    load_dotenv()
-    token = os.getenv("BOT_TOKEN")
-    if not token:
-        print("BOT_TOKEN is unset! Exiting...")
-        exit(1)
-
-    application = Application.builder().token(token).build()
-
-    for handler in (*get_user_handlers(), *get_admin_handlers()):
-        application.add_handler(handler)
-
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+async def main() -> None:
+    dp.include_router(get_tree.router)
+    dp.include_router(help.router)
+    dp.include_router(add_tree.router)
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

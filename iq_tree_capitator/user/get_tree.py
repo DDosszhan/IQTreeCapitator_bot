@@ -1,15 +1,13 @@
 import uuid
-from telegram import Update
-from telegram.ext import (
-    CommandHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-    ConversationHandler,
-)
+from aiogram import Router
+from aiogram.filters import Command, CommandObject
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Message
+from aiogram.fsm.state import State, StatesGroup
+from iq_tree_capitator import utils
 from sqlmodel import select, Session
-from ..database import engine, Tree
-from ..utils import reply_text_if_msg
+
+from iq_tree_capitator.database import engine, Tree
 
 ASK_ID = 1
 MESSAGE_TEMPLATE = """
@@ -20,6 +18,13 @@ ID: {id}
 Высота: {height}
 Владелец: {owner}
 """
+
+
+class AskId(StatesGroup):
+    tree_id = State()
+
+
+router = Router()
 
 
 def get_tree_msg(tree_id: str) -> str:
@@ -44,29 +49,25 @@ def get_tree_msg(tree_id: str) -> str:
             return "ID не найдено."
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    args = context.args
+@router.message(Command("start"))
+async def start(message: Message, command: CommandObject, state: FSMContext) -> None:
+    args = command.args
     if args:
-        tree_id = args[0]
-        await reply_text_if_msg(update, get_tree_msg(tree_id))
-        return ConversationHandler.END
+        tree_id = args.split(" ")[0]
+        await message.answer(get_tree_msg(tree_id))
     else:
-        await reply_text_if_msg(update, "Пожалуйста, введите ID дерева:")
-        return ASK_ID
+        await message.answer("Пожалуйста, введите ID дерева:")
+        await state.set_state(AskId.tree_id)
 
 
-async def ask_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message and update.message.text:
-        tree_id = update.message.text.strip()
-        await reply_text_if_msg(update, get_tree_msg(tree_id))
-    return ConversationHandler.END
+@router.message(AskId.tree_id)
+async def ask_id(message: Message, state: FSMContext) -> None:
+    if not message.text:
+        await state.clear()
 
+    if not message.text:
+        await utils.fsm_err(message, state, AskId.tree_id, "ID должен быть текстом!")
+        return
 
-def get_tree_handler():
-    return ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
-        states={
-            ASK_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_id)],
-        },
-        fallbacks=[],
-    )
+    await message.answer(get_tree_msg(message.text.strip()))
+    await state.clear()

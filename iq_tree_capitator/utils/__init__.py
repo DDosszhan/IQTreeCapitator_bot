@@ -1,3 +1,3 @@
-from .message import reply_text_if_msg
+from .error import fsm_err
 
-__all__ = ["reply_text_if_msg"]
+__all__ = ["fsm_err"]
