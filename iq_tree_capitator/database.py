@@ -5,6 +5,7 @@ from sqlmodel import Field, SQLModel, create_engine
 DATABASE_NAME = "database.db"
 SQLITE_URL = f"sqlite:///{DATABASE_NAME}"
 
+
 class Tree(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
 

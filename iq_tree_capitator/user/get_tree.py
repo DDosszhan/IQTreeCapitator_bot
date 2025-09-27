@@ -1,9 +1,12 @@
-import os
 import uuid
-import logging
-from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, ConversationHandler
+from telegram.ext import (
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+    ConversationHandler,
+)
 from sqlmodel import select, Session
 from ..database import engine, Tree
 
@@ -17,6 +20,7 @@ ID: {id}
 Владелец: {owner}
 """
 
+
 def get_tree_msg(tree_id: str) -> str:
     try:
         tree_uuid = uuid.UUID(tree_id)
@@ -28,9 +32,16 @@ def get_tree_msg(tree_id: str) -> str:
         tree = session.exec(statement).first()
 
         if tree:
-            return MESSAGE_TEMPLATE.format(id=tree.id, lon=tree.lon, lan=tree.lan, height=tree.height, owner=tree.owner)
+            return MESSAGE_TEMPLATE.format(
+                id=tree.id,
+                lon=tree.lon,
+                lan=tree.lan,
+                height=tree.height,
+                owner=tree.owner,
+            )
         else:
             return "ID не найдено."
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     args = context.args
@@ -42,10 +53,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("Пожалуйста, введите ID дерева:")
         return ASK_ID
 
+
 async def ask_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     tree_id = update.message.text.strip()
     await update.message.reply_text(get_tree_msg(tree_id))
     return ConversationHandler.END
+
 
 def get_tree_handler():
     return ConversationHandler(
