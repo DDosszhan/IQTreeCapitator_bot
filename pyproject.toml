@@ -1,0 +1,19 @@
+[project]
+name = 'iq_tree_capitator'
+description = '...'
+authors = [{ name = 'linkfrg' }]
+version = "0.1.0.alpha0"
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+version_scheme = "no-guess-dev"
+
+[project.scripts]
+iq-tree-capitator = "iq_tree_capitator.main:main"
