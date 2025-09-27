@@ -1,87 +1,128 @@
-from telegram.ext import CommandHandler, MessageHandler, filters, ConversationHandler
-from telegram import Update
-from telegram.ext import CallbackContext
+from aiogram import Router
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import Message
 from sqlmodel import Session
-from ._common import admin_required
+from ._common import IsAdmin
 from ..database import engine, Tree
-from ..utils import reply_text_if_msg
-
-S_ASK_LON, S_ASK_LAN, S_ASK_HEIGHT, S_ASK_OWNER = range(4)
+from iq_tree_capitator import utils
 
 
-@admin_required
-async def _start_add_tree(update: Update, context: CallbackContext) -> int:
-    await reply_text_if_msg(update, "Enter tree longitude:")
-    return S_ASK_LON
+class AddTreeState(StatesGroup):
+    lon = State()
+    lan = State()
+    height = State()
+    owner = State()
 
 
-async def _ask_lon(update: Update, context: CallbackContext) -> int:
+router = Router()
+
+
+@router.message(Command("add_tree"), IsAdmin())
+async def add_tree(message: Message, state: FSMContext) -> None:
+    await message.answer("Enter tree longitude:")
+    await state.set_state(AddTreeState.lon)
+
+
+@router.message(AddTreeState.lon)
+async def ask_lon(message: Message, state: FSMContext) -> None:
+    async def err():
+        await utils.fsm_err(
+            message,
+            state,
+            AddTreeState.lon,
+            "❌ Invalid longitude. Enter a float number:",
+        )
+
+    if not message.text:
+        await err()
+        return
+
     try:
-        context.user_data["new_tree_lon"] = float(update.message.text)  # type: ignore
-        await reply_text_if_msg(update, "Enter tree latitude:")
-        return S_ASK_LAN
+        lon = float(message.text)
+        await state.update_data(lon=lon)
+        await message.answer("Enter tree latitude:")
+        await state.set_state(AddTreeState.lan)
     except ValueError:
-        await reply_text_if_msg(update, "❌ Invalid longitude. Enter a float number:")
-        return S_ASK_LON
+        await err()
 
 
-async def _ask_lan(update: Update, context: CallbackContext) -> int:
+@router.message(AddTreeState.lan)
+async def ask_lan(message: Message, state: FSMContext) -> None:
+    async def err():
+        await utils.fsm_err(
+            message,
+            state,
+            AddTreeState.lon,
+            "❌ Invalid latitude. Enter a float number:",
+        )
+
+    if not message.text:
+        await err()
+        return
+
     try:
-        context.user_data["new_tree_lan"] = float(update.message.text)  # type: ignore
-        await reply_text_if_msg(update, "Enter tree height:")
-        return S_ASK_HEIGHT
+        lan = float(message.text)
+        await state.update_data(lan=lan)
+        await message.answer("Enter tree height:")
+        await state.set_state(AddTreeState.height)
     except ValueError:
-        await reply_text_if_msg(update, "❌ Invalid latitude. Enter a float number:")
-        return S_ASK_LAN
+        await err()
 
 
-async def _ask_height(update: Update, context: CallbackContext) -> int:
+@router.message(AddTreeState.height)
+async def ask_height(message: Message, state: FSMContext) -> None:
+    async def err():
+        await utils.fsm_err(
+            message,
+            state,
+            AddTreeState.lon,
+            "❌ Invalid latitude. Enter a float number:",
+        )
+
+    if not message.text:
+        await err()
+        return
+
     try:
-        context.user_data["new_tree_height"] = int(update.message.text)  # type: ignore
-        await reply_text_if_msg(update, "Enter tree owner:")
-        return S_ASK_OWNER
+        height = int(message.text)
+        await state.update_data(height=height)
+        await message.answer("Enter tree owner:")
+        await state.set_state(AddTreeState.owner)
     except ValueError:
-        await reply_text_if_msg(update, "❌ Invalid height. Enter a number:")
-        return S_ASK_HEIGHT
+        await err()
 
 
-async def _ask_owner(update: Update, context: CallbackContext) -> int:
-    if not update.message or not context.user_data:
-        return ConversationHandler.END
+@router.message(AddTreeState.owner)
+async def ask_owner(message: Message, state: FSMContext) -> None:
+    owner = message.text
 
-    owner = update.message.text
-
-    lon = context.user_data.get("new_tree_lon", None)
-    lan = context.user_data.get("new_tree_lan", None)
-    height = context.user_data.get("new_tree_height", None)
+    data = await state.get_data()
+    lon = data.get("lon", None)
+    lan = data.get("lan", None)
+    height = data.get("height", None)
 
     if not lon or not lan or not height or not owner:
-        return ConversationHandler.END
+        message.answer("Not enough data provided.")
+        await state.clear()
+        return
 
     with Session(engine) as session:
         item = Tree(lon=lon, lan=lan, height=height, owner=owner)
         session.add(item)
         session.commit()
 
-    await reply_text_if_msg(update, "✅ Item added")
-    return ConversationHandler.END
+    await message.answer("✅ Item added")
+    await state.clear()
 
 
-async def _cancel(update: Update, context: CallbackContext) -> int:
-    await reply_text_if_msg(update, "🚫 Canceled.")
-    return ConversationHandler.END
+@router.message(Command("cancel"), IsAdmin())
+async def cancel_fsm(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        await message.answer("❌ Nothing to cancel — you are not in any process.")
+        return
 
-
-def get_add_tree_handler() -> ConversationHandler:
-    return ConversationHandler(
-        entry_points=[CommandHandler("add_tree", _start_add_tree)],
-        states={
-            S_ASK_LON: [MessageHandler(filters.TEXT & ~filters.COMMAND, _ask_lon)],
-            S_ASK_LAN: [MessageHandler(filters.TEXT & ~filters.COMMAND, _ask_lan)],
-            S_ASK_HEIGHT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, _ask_height)
-            ],
-            S_ASK_OWNER: [MessageHandler(filters.TEXT & ~filters.COMMAND, _ask_owner)],
-        },
-        fallbacks=[CommandHandler("cancel", _cancel)],
-    )
+    await state.clear()
+    await message.answer("✅ Process cancelled. You can start again anytime.")
