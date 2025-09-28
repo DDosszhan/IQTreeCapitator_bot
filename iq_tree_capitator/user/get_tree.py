@@ -11,11 +11,12 @@ from iq_tree_capitator.database import engine, Tree
 
 ASK_ID = 1
 MESSAGE_TEMPLATE = """
-Дерево найдено:
-ID: {id}
-Высота: {height}
-Владелец: {owner}
-Координаты: [Открыть в Google Maps](https://www.google.com/maps?q={lan},{lon})
+🌳 Ваше дерево!
+
+🆔 **ID:** {id}
+📏 **Высота:** {height}
+👤 **Владелец:** {owner}
+📍 **Координаты:** [Открыть в Google Maps](https://www.google.com/maps?q={lan},{lon}) 🌎
 """
 
 
@@ -30,7 +31,7 @@ async def send_tree_data(message: Message, tree_id: str) -> None:
     try:
         tree_uuid = uuid.UUID(tree_id)
     except ValueError:
-        await message.reply("Неправильный формат ID!")
+        await message.reply("❌ Неправильный формат ID!")
         return
 
     with Session(engine) as session:
@@ -51,7 +52,7 @@ async def send_tree_data(message: Message, tree_id: str) -> None:
                 parse_mode="Markdown"
             )
         else:
-            await message.reply("ID не найдено.")
+            await message.reply("🔍 ID не найдено.")
 
 
 @router.message(Command("start"))
@@ -61,7 +62,7 @@ async def start(message: Message, command: CommandObject, state: FSMContext) -> 
         tree_id = args.split(" ")[0]
         await send_tree_data(message, tree_id)
     else:
-        await message.answer("Пожалуйста, введите ID дерева:")
+        await message.answer("🌳 Пожалуйста, введите ID дерева:")
         await state.set_state(AskId.tree_id)
 
 
@@ -71,7 +72,7 @@ async def ask_id(message: Message, state: FSMContext) -> None:
         await state.clear()
 
     if not message.text:
-        await utils.fsm_err(message, state, AskId.tree_id, "ID должен быть текстом!")
+        await utils.fsm_err(message, state, AskId.tree_id, "✏️ ID должен быть текстом!")
         return
 
     await send_tree_data(message, message.text.strip())

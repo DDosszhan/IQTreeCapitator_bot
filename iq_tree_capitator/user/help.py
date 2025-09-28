@@ -8,5 +8,5 @@ router = Router()
 @router.message(Command("help"))
 async def help_command(message: Message) -> None:
     await message.answer(
-        "Отправьте /start <id> или просто /start и следуйте инструкциям."
+        "💡 Отправьте /start <id> или просто /start и следуйте инструкциям."
     )
