@@ -13,10 +13,9 @@ ASK_ID = 1
 MESSAGE_TEMPLATE = """
 Дерево найдено:
 ID: {id}
-Долгота: {lon}
-Широта: {lan}
 Высота: {height}
 Владелец: {owner}
+Координаты: [Открыть в Google Maps](https://www.google.com/maps?q={lan},{lon})
 """
 
 
@@ -49,6 +48,7 @@ async def send_tree_data(message: Message, tree_id: str) -> None:
                     height=tree.height,
                     owner=tree.owner,
                 ),
+                parse_mode="Markdown"
             )
         else:
             await message.reply("ID не найдено.")
