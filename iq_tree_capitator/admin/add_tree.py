@@ -10,6 +10,7 @@ from iq_tree_capitator import utils
 
 
 class AddTreeState(StatesGroup):
+    photo = State()
     lon = State()
     lan = State()
     height = State()
@@ -21,6 +22,21 @@ router = Router()
 
 @router.message(Command("add_tree"), IsAdmin())
 async def add_tree(message: Message, state: FSMContext) -> None:
+    await message.answer("Send a photo of the tree:")
+    await state.set_state(AddTreeState.photo)
+
+
+@router.message(AddTreeState.photo)
+async def ask_photo(message: Message, state: FSMContext) -> None:
+    if not message.photo:
+        await utils.fsm_err(
+            message, state, AddTreeState.photo, "Please provide a photo."
+        )
+        return
+
+    photo = message.photo[-1]
+    filename = await utils.download_photo(photo)
+    await state.update_data(photo=filename)
     await message.answer("Enter tree longitude:")
     await state.set_state(AddTreeState.lon)
 
@@ -99,17 +115,18 @@ async def ask_owner(message: Message, state: FSMContext) -> None:
     owner = message.text
 
     data = await state.get_data()
+    photo = data.get("photo", None)
     lon = data.get("lon", None)
     lan = data.get("lan", None)
     height = data.get("height", None)
 
-    if not lon or not lan or not height or not owner:
+    if not photo or not lon or not lan or not height or not owner:
         message.answer("Not enough data provided.")
         await state.clear()
         return
 
     with Session(engine) as session:
-        item = Tree(lon=lon, lan=lan, height=height, owner=owner)
+        item = Tree(photo=photo, lon=lon, lan=lan, height=height, owner=owner)
         session.add(item)
         session.commit()
 

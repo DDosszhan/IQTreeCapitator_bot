@@ -9,6 +9,7 @@ SQLITE_URL = f"sqlite:///{DATABASE_NAME}"
 class Tree(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
 
+    photo: str  # path
     owner: str
     height: int
     lon: float
