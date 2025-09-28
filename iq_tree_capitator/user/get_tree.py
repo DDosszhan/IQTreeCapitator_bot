@@ -49,7 +49,7 @@ async def send_tree_data(message: Message, tree_id: str) -> None:
                     height=tree.height,
                     owner=tree.owner,
                 ),
-                parse_mode="Markdown"
+                parse_mode="Markdown",
             )
         else:
             await message.reply("🔍 ID не найдено.")
@@ -68,9 +68,6 @@ async def start(message: Message, command: CommandObject, state: FSMContext) -> 
 
 @router.message(AskId.tree_id)
 async def ask_id(message: Message, state: FSMContext) -> None:
-    if not message.text:
-        await state.clear()
-
     if not message.text:
         await utils.fsm_err(message, state, AskId.tree_id, "✏️ ID должен быть текстом!")
         return
